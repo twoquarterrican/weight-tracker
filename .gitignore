@@ -6,7 +6,7 @@ build/
 local.properties
 
 # Gradle wrapper
-gradle/wrapper/gradle-wrapper.properties
+!gradle/wrapper/gradle-wrapper.properties
 
 # Android Studio files
 .idea/
