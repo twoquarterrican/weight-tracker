@@ -3,10 +3,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    
+    <!-- Head -->
     <path
-        android:fillColor="#3DDC84"
-        android:pathData="M0,0h108v108h-108z"/>
+        android:fillColor="#6650a4"
+        android:pathData="M45,35 m-10,0 a10,10 0 1,1 20,0 a10,10 0 1,1 -20,0" />
+        
+    <!-- Body with Big Gut -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M53,42 P53,42 53,52 63,52 63,42 Z" />
+        android:fillColor="#6650a4"
+        android:pathData="M40,45 L40,85 L60,85 Q95,65 40,45 Z" />
 </vector>
