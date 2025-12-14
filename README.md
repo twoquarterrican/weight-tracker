@@ -25,6 +25,34 @@ A simple Android application built with Kotlin and Jetpack Compose to track dail
   - `AddEntryScreen`: Form to add new data.
   - `Graph`: Custom canvas implementation for the line chart.
 
+## Running Automated Tests
+
+To run the unit and integration tests, it is **highly recommended** to use a dedicated Emulator to prevent wiping data on your physical device.
+
+### 1. Set Up the Test Emulator
+1.  Open **Android Studio**.
+2.  Go to **Tools** > **Device Manager**.
+3.  Click the **+** (Create Virtual Device) button.
+4.  Select **Pixel 8** (or similar Phone hardware).
+5.  Select the **API 34** system image (Release Name: "UpsideDownCake").
+    *   *Note: Avoid "Preview" or "Extension" images for stability.*
+6.  Name the AVD: `PIXEL_API_34`.
+7.  Click **Finish**.
+
+### 2. Start the Emulator
+1.  Open **Device Manager**.
+2.  Click the **Play** button next to `PIXEL_API_34`.
+3.  Wait for the emulator to boot up.
+
+### 3. Run Tests
+Run the following command in the terminal (Git Bash or Terminal tab in Android Studio):
+
+```bash
+set ANDROID_SERIAL=emulator-5554 ; ./gradlew connectedAndroidTest
+```
+
+*Note: This command forces the tests to run ONLY on the emulator, keeping your physical phone safe.*
+
 ## How to Load on Your Phone for Testing
 
 To run this app on your physical Android device, follow these steps:
