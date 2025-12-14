@@ -53,6 +53,26 @@ set ANDROID_SERIAL=emulator-5554 ; ./gradlew connectedAndroidTest
 
 *Note: This command forces the tests to run ONLY on the emulator, keeping your physical phone safe.*
 
+## Build Variants (Safe Data vs. Development)
+
+To prevent accidental data loss while developing, this project is configured with distinct **Build Variants**.
+
+-   **Debug (Default)**:
+    -   **Package Name**: `io.github.twoquarterrican.weighttracker.debug`
+    -   **Use Case**: Daily development, testing new features, running unit tests.
+    -   **Safety**: Installing this creates a *separate app* on your phone. You can wipe its data or uninstall it freely without affecting your real logs.
+
+-   **Release**:
+    -   **Package Name**: `io.github.twoquarterrican.weighttracker`
+    -   **Use Case**: Your personal "Production" version where you keep your real weight history.
+    -   **Safety**: Only install this when you want to update your daily driver app.
+
+### How to Switch Variants
+1.  In Android Studio, find the **Build Variants** tool window (usually on the left sidebar).
+2.  Click the dropdown next to `app`.
+3.  Select **debug** for development (Safe).
+4.  Select **release** to update your real app (Production).
+
 ## How to Load on Your Phone for Testing
 
 To run this app on your physical Android device, follow these steps:
