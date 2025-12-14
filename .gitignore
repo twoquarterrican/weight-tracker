@@ -1,0 +1,20 @@
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Gradle wrapper
+gradle/wrapper/gradle-wrapper.properties
+
+# Android Studio files
+.idea/
+.DS_Store
+*.iml
+*.hprof
+.cxx/
+
+# Output files
+*.apk
+*.aab
