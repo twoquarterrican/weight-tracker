@@ -6,10 +6,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.util.Calendar
 import java.util.Date
 import kotlin.math.abs
 
@@ -69,13 +74,10 @@ class AddEntryScreenTest {
 
     @Test
     fun addEntryScreen_savesAndResetsTimeForNextEntry() {
-        // We use a state to control which "session" we are in.
         val sessionState = mutableStateOf(1)
         var savedWeight = 0f
 
         composeTestRule.setContent {
-            // We use a Key to force a full recomposition/reset of the AddEntryScreen when the session changes
-            // ensuring it treats it as a fresh navigation.
             val session by remember { sessionState }
             
             if (session == 1) {
@@ -83,7 +85,7 @@ class AddEntryScreenTest {
                     initialWeight = null,
                     onSave = { weight, _ -> 
                         savedWeight = weight
-                        sessionState.value = 2 // Move to next session
+                        sessionState.value = 2
                     },
                     onCancel = {}
                 )
@@ -96,24 +98,83 @@ class AddEntryScreenTest {
             }
         }
 
-        // --- Session 1 ---
-        // User enters 150.0
+        // Session 1
         composeTestRule.onNodeWithText("Weight (lbs)").performTextInput("150.0")
-        
-        // User Clicks Save
         composeTestRule.onNodeWithText("Save").performClick()
-        
-        // Wait for idle to ensure state update and recomposition happens
         composeTestRule.waitForIdle()
 
-        // --- Session 2 ---
-        // Verify we are now seeing the second screen with pre-filled data
-        
-        // Verify Weight is pre-filled with the value from Session 1
+        // Session 2
         composeTestRule.onNodeWithText("150.0").assertExists()
-
-        // Verify Time is "Now" (Current System Time)
         val expectedDateString = DateFormat.format("yyyy-MM-dd h:mm a", Date()).toString()
         composeTestRule.onNodeWithText(expectedDateString).assertExists()
+    }
+
+    @Test
+    fun addEntryScreen_pastDate_defaultsToMinuteZero() {
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+
+        composeTestRule.setContent {
+            AddEntryScreen(
+                initialWeight = null,
+                onSave = { _, _ -> },
+                onCancel = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("Date & Time").performClick()
+        device.wait(Until.findObject(By.text("OK")), 5000)
+
+        // Find Current Year to click header
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR).toString()
+        val yearHeader = device.findObject(By.text(currentYear))
+        
+        if (yearHeader != null) {
+            yearHeader.click()
+            val pastYearObj = device.findObject(By.text("2022"))
+            if (pastYearObj != null) pastYearObj.click()
+        }
+        
+        val prevMonth = device.findObject(By.desc("Previous month"))
+        if (prevMonth != null) prevMonth.click()
+
+        device.findObject(By.text("OK")).click()
+        device.wait(Until.findObject(By.text("OK")), 5000)
+
+        val hasZeroMinute = device.findObject(By.textContains(":00")) != null || 
+                            device.findObject(By.textContains(" 00")) != null ||
+                            device.findObject(By.text("00")) != null
+                            
+        assertTrue("Time picker should show :00 minute for past date", hasZeroMinute)
+        device.pressBack()
+    }
+
+    @Test
+    fun addEntryScreen_currentDate_preservesTime() {
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+
+        composeTestRule.setContent {
+            AddEntryScreen(
+                initialWeight = null,
+                onSave = { _, _ -> },
+                onCancel = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("Date & Time").performClick()
+        device.wait(Until.findObject(By.text("OK")), 5000)
+        device.findObject(By.text("OK")).click()
+
+        device.wait(Until.findObject(By.text("OK")), 5000)
+
+        val calendar = Calendar.getInstance()
+        val currentMinute = calendar.get(Calendar.MINUTE)
+        
+        if (currentMinute != 0) {
+            val minuteStr = "%02d".format(currentMinute)
+            val hasCurrentMinute = device.findObject(By.textContains(":$minuteStr")) != null ||
+                                   device.findObject(By.textContains(" $minuteStr")) != null
+            assertTrue("Time picker should show current minute ($minuteStr) for today", hasCurrentMinute)
+        }
+        device.pressBack()
     }
 }

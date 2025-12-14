@@ -1,44 +1,86 @@
 package io.github.twoquarterrican.weighttracker.ui
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.text.format.DateFormat
+import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import io.github.twoquarterrican.weighttracker.data.WeightEntry
-import java.util.Date
-
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
-import android.widget.Toast
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.ui.platform.LocalContext
 import java.util.Calendar
+import java.util.Date
 
 @Composable
 fun WeightTrackerApp(viewModel: WeightViewModel) {
     val navController = rememberNavController()
     val weightList by viewModel.allWeights.collectAsState()
     val latestWeight = weightList.firstOrNull()?.weight
+    
+    // Lift state up to WeightTrackerApp to persist across navigation
+    var minimumWeight by remember { mutableStateOf<Float?>(null) }
+    var showGraph by remember { mutableStateOf(false) }
+
+    // Calculate default minimum based on data if not manually set
+    val dataMin = weightList.minOfOrNull { it.weight } ?: 0f
+    val effectiveMinimumWeight = minimumWeight ?: (dataMin * 0.8f).coerceAtLeast(0f)
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             HomeScreen(
                 viewModel = viewModel,
+                weightList = weightList,
+                showGraph = showGraph,
+                onToggleGraph = { showGraph = !showGraph },
+                minimumWeight = effectiveMinimumWeight,
+                onMinimumWeightChange = { minimumWeight = it },
                 onAddClick = { navController.navigate("add") }
             )
         }
@@ -59,25 +101,84 @@ fun WeightTrackerApp(viewModel: WeightViewModel) {
 @Composable
 fun HomeScreen(
     viewModel: WeightViewModel,
+    weightList: List<WeightEntry>,
+    showGraph: Boolean,
+    onToggleGraph: () -> Unit,
+    minimumWeight: Float,
+    onMinimumWeightChange: (Float?) -> Unit,
     onAddClick: () -> Unit
 ) {
-    val weightList by viewModel.allWeights.collectAsState()
-    var showGraph by remember { mutableStateOf(false) }
+    val currentMinimumWeight = minimumWeight
+    var weightToDelete by remember { mutableStateOf<WeightEntry?>(null) }
+    
+    if (weightToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { weightToDelete = null },
+            title = { Text("Delete Entry") },
+            text = { Text("Are you sure you want to delete this weight entry?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        weightToDelete?.let { viewModel.deleteWeight(it) }
+                        weightToDelete = null
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { weightToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Weight Tracker") },
                 actions = {
-                    TextButton(onClick = { showGraph = !showGraph }) {
+                    TextButton(onClick = onToggleGraph) {
                         Text(if (showGraph) "Show Table" else "Show Graph")
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddClick) {
-                Icon(Icons.Default.Add, contentDescription = "Add Weight")
+            if (showGraph) {
+                // Zoom Controls (Only show when graph is visible)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SmallFloatingActionButton(
+                        onClick = {
+                            // Zoom In (Increase minimum towards data)
+                            val dataMin = weightList.minOfOrNull { it.weight } ?: 0f
+                            val newMin = (currentMinimumWeight + 10f).coerceAtMost(dataMin - 5f)
+                            onMinimumWeightChange(newMin.coerceAtLeast(0f))
+                        }
+                    ) {
+                        Text("+", style = MaterialTheme.typography.titleLarge)
+                    }
+                    SmallFloatingActionButton(
+                        onClick = {
+                            // Zoom Out (Decrease minimum towards 0)
+                            val newMin = (currentMinimumWeight - 10f).coerceAtLeast(0f)
+                            onMinimumWeightChange(if (newMin <= 0f) null else newMin)
+                        }
+                    ) {
+                        Text("-", style = MaterialTheme.typography.titleLarge)
+                    }
+                    FloatingActionButton(onClick = onAddClick) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Weight")
+                    }
+                }
+            } else {
+                FloatingActionButton(onClick = onAddClick) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Weight")
+                }
             }
         }
     ) { innerPadding ->
@@ -89,18 +190,21 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     if (weightList.isNotEmpty()) {
-                        WeightGraph(entries = weightList)
+                        WeightGraph(
+                            entries = weightList,
+                            minYValue = currentMinimumWeight
+                        )
                     } else {
                         Text("No data to graph")
                     }
                 }
-            } else {
-                // Show Table (List)
-                WeightList(
-                    weights = weightList,
-                    onDelete = { viewModel.deleteWeight(it) }
-                )
-            }
+    } else {
+        // Show Table (List)
+        WeightList(
+            weights = weightList.sortedByDescending { it.date },
+            onDelete = { weightToDelete = it }
+        )
+    }
         }
     }
 }
@@ -126,12 +230,12 @@ fun WeightList(
                 Text("Weight (lbs)", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.width(24.dp)) // For delete icon space
             }
-            Divider()
+            HorizontalDivider()
         }
         
         items(weights) { entry ->
             WeightRow(entry = entry, onDelete = onDelete)
-            Divider()
+            HorizontalDivider()
         }
     }
 }
@@ -202,12 +306,32 @@ fun AddEntryScreen(
                 calendar.set(Calendar.MONTH, month)
                 calendar.set(Calendar.DAY_OF_MONTH, day)
                 
-                // If selection is in future (e.g. kept same time but changed date to today where time is future), clamp it.
-                if (calendar.timeInMillis > System.currentTimeMillis()) {
-                     selectedTimestamp = System.currentTimeMillis()
-                } else {
-                     selectedTimestamp = calendar.timeInMillis
+                // Check if the selected date is today
+                val now = Calendar.getInstance()
+                val isToday = now.get(Calendar.YEAR) == year &&
+                              now.get(Calendar.MONTH) == month &&
+                              now.get(Calendar.DAY_OF_MONTH) == day
+
+                // When entering a past value, default to 00 for the minute
+                if (!isToday) {
+                    calendar.set(Calendar.MINUTE, 0)
                 }
+                
+                // If selection is in future (e.g. kept same time but changed date to today where time is future), clamp it.
+                selectedTimestamp = if (calendar.timeInMillis > System.currentTimeMillis()) {
+                    System.currentTimeMillis()
+                } else {
+                    calendar.timeInMillis
+                }
+                
+                // Update the TimePicker to match the adjusted time
+                // We recreate a calendar from the final selectedTimestamp to ensure we show exactly what was saved
+                val displayCalendar = Calendar.getInstance().apply { timeInMillis = selectedTimestamp }
+                timePickerDialog.updateTime(
+                    displayCalendar.get(Calendar.HOUR_OF_DAY),
+                    displayCalendar.get(Calendar.MINUTE)
+                )
+                
                 // Show time picker after date is selected
                 timePickerDialog.show()
             },

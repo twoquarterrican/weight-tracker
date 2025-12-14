@@ -28,7 +28,8 @@ fun WeightGraph(
     entries: List<WeightEntry>,
     modifier: Modifier = Modifier,
     lineColor: Color = MaterialTheme.colorScheme.primary,
-    textColor: Color = MaterialTheme.colorScheme.onSurface
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
+    minYValue: Float = 0f
 ) {
     if (entries.isEmpty()) return
 
@@ -37,10 +38,9 @@ fun WeightGraph(
     
     val weights = sortedEntries.map { it.weight }
     // Ensure 0 is the baseline
-    val minWeight = 0f
+    val minWeight = minYValue
     val maxDataWeight = weights.maxOrNull() ?: 100f
-    // Add 10% padding to the top so the highest point isn't cut off
-    val maxWeight = if (maxDataWeight > 0) maxDataWeight * 1.1f else 100f
+    val maxWeight = if (maxDataWeight > 0) maxDataWeight + 1f else 100f
     
     val yRange = maxWeight - minWeight
     
@@ -91,8 +91,8 @@ fun WeightGraph(
                 textAlign = Paint.Align.LEFT
             }
             // Y-Axis Labels
-            // Label for 0
-            canvas.nativeCanvas.drawText("0", 10f, height - 10f, paint)
+            // Label for 0 (or Min)
+            canvas.nativeCanvas.drawText("${minWeight.toInt()}", 10f, height - 10f, paint)
             // Label for Max
             canvas.nativeCanvas.drawText("${maxWeight.toInt()}", 10f, 40f, paint)
             
